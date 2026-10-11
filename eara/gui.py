@@ -24,12 +24,29 @@ from eara.protocol import (
 )
 from eara.session import Device
 
-_FONT_DOT_FALLBACK = "DotGothic16, VT323, monospace"
-_FONT_UI_FALLBACK = "Inter, NType 82, Roboto, Cantarell, sans-serif"
+_FONT_DOT_FALLBACK = ("DotGothic16", "VT323", "monospace")
+_FONT_UI_FALLBACK = ("Inter", "NType 82", "Roboto", "Cantarell", "sans-serif")
 _FONT_FILES = (
     "DotGothic16-Regular.ttf",
     "Inter-Regular.ttf",
 )
+
+
+def _css_font_family(*families: str) -> str:
+    """Quote multi-word font names so GTK CSS does not treat them as junk tokens."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for family in families:
+        for part in family.split(","):
+            name = part.strip().strip("\"'")
+            if not name:
+                continue
+            key = name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            ordered.append(f'"{name}"' if any(ch.isspace() for ch in name) else name)
+    return ", ".join(ordered)
 
 
 def _pick_dot_font() -> str:
@@ -92,7 +109,7 @@ window.eara-window {{
   background-color: #000000;
   background-image: radial-gradient(circle, #252525 0.65px, transparent 0.65px);
   background-size: 16px 16px;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
 }}
 .eara-hero {{
   background-color: #000000;
@@ -100,7 +117,7 @@ window.eara-window {{
   padding: 12px 18px 8px 18px;
 }}
 .eara-brand {{
-  font-family: {dot}, {_FONT_DOT_FALLBACK};
+  font-family: {_css_font_family(dot, *_FONT_DOT_FALLBACK)};
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 6px;
@@ -109,7 +126,7 @@ window.eara-window {{
   margin-bottom: 0;
 }}
 .eara-tag {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 2px;
@@ -118,7 +135,7 @@ window.eara-window {{
   line-height: 1.1;
 }}
 .eara-ui-text, .eara-status, .eara-battery, .eara-meta, .dim-label {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
 }}
 .eara-status-card {{
   background: linear-gradient(180deg, #171717 0%, #101010 100%);
@@ -283,7 +300,7 @@ button.eara-header-btn {{
   border-radius: 999px;
   min-height: 34px;
   padding: 0 18px;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-weight: 600;
   background-color: #1a1a1a;
   color: #888888;
@@ -316,12 +333,12 @@ window.eara-window.eara-focused button.eara-header-btn.eara-header-reset.eara-he
   color: #d71921;
 }}
 .eara-panel label {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-size: 11px;
   color: #aaaaaa;
 }}
 .eara-card listview label, .eara-card row label {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
 }}
 .eara-card {{
   background-color: #141414;
@@ -339,7 +356,7 @@ window.eara-window.eara-focused button.eara-header-btn.eara-header-reset.eara-he
   min-height: 140px;
 }}
 .eara-card-title {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -347,7 +364,7 @@ window.eara-window.eara-focused button.eara-header-btn.eara-header-reset.eara-he
   text-transform: uppercase;
 }}
 .eara-header-title {{
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-weight: 600;
   font-size: 14px;
 }}
@@ -367,7 +384,7 @@ button.eara-tab {{
   background-color: transparent;
   color: #888888;
   border: 1px solid transparent;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-size: 13px;
   font-weight: 600;
   opacity: 0.82;
@@ -437,7 +454,7 @@ headerbar button.flat:hover {{
   background-color: #1a1a1a;
   color: #c8c8c8;
   border: 1px solid #333333;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-weight: 500;
   opacity: 0.78;
 }}
@@ -457,7 +474,7 @@ window.eara-window.eara-focused .eara-content button:not(.flat):not(.eara-header
   color: #ffffff;
   border: 1px solid #444444;
   min-height: 36px;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-weight: 500;
   font-size: 13px;
 }}
@@ -527,7 +544,7 @@ window.eara-window.eara-focused .eara-chip-disconnect {{
   padding: 18px;
 }}
 .eara-about-brand {{
-  font-family: {dot}, {_FONT_DOT_FALLBACK};
+  font-family: {_css_font_family(dot, *_FONT_DOT_FALLBACK)};
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 5px;
@@ -634,13 +651,13 @@ window.eara-window.eara-focused switch.eara-switch:checked slider {{
   margin-top: 4px;
 }}
 .eara-anc-list button {{
-  width: 100%;
+  min-width: 0;
 }}
 .eara-anc-list flowboxchild {{
-  width: 100%;
+  min-width: 0;
 }}
 .eara-anc-list flowboxchild button {{
-  width: 100%;
+  min-width: 0;
 }}
 switch.eara-switch:focus {{
   outline: none;
@@ -648,7 +665,7 @@ switch.eara-switch:focus {{
 }}
 .eara-content dropdown {{
   border-radius: 12px;
-  font-family: {ui}, {_FONT_UI_FALLBACK};
+  font-family: {_css_font_family(ui, *_FONT_UI_FALLBACK)};
   font-size: 13px;
 }}
 """
@@ -1587,7 +1604,11 @@ class EarAWindow(Adw.ApplicationWindow):
                 offline=False,
             )
             self._fill_devices()
-            self._run(self._do_refresh)
+            # Auto-connect when buds are paired but audio/protocol is down.
+            if not self.device.connected or not bluez.has_audio_sink(self.device.address):
+                self._run(self._do_connect)
+            else:
+                self._run(self._do_refresh)
         except LookupError:
             self._set_status_message(t("no_device"), offline=True)
         return False

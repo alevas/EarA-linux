@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Nothing X; Nothing Ears
-GenericName=EarA
+Name=EarA
+GenericName=Nothing / CMF earbuds companion
 Comment=Unofficial Linux companion for Nothing / CMF earbuds
 Exec=io.github.oneydef.eara
 Icon=io.github.oneydef.eara

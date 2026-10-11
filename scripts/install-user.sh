@@ -45,7 +45,7 @@ echo "  $BIN/eara"
 echo "  $APP/eara.desktop"
 echo "  $META/eara.metainfo.xml"
 echo "  $ICON/eara.svg"
-echo "Open from the app menu as «Nothing X; Nothing Ears», or run: eara gui"
+echo "Open from the app menu as «EarA», or run: eara gui"
 if ! command -v eara >/dev/null 2>&1; then
   echo "Note: add $BIN to PATH if 'eara' is not found in a new terminal."
 fi
