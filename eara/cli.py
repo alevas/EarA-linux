@@ -7,7 +7,15 @@ import json
 import sys
 
 from eara import __version__, audio
-from eara.protocol import ANC_MODES, EQ_PRESETS, GESTURE_ACTIONS, GESTURE_SIDES, GESTURE_TYPES, LISTENING_MODES
+from eara.protocol import (
+    ANC_MODES,
+    CMF_EQ_PRESETS,
+    EQ_PRESETS,
+    GESTURE_ACTIONS,
+    GESTURE_SIDES,
+    GESTURE_TYPES,
+    LISTENING_MODES,
+)
 from eara.session import Device
 
 
@@ -243,8 +251,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("mode", choices=sorted(ANC_MODES))
     a.set_defaults(func=cmd_anc)
 
-    e = sub.add_parser("eq")
-    e.add_argument("preset", choices=sorted(EQ_PRESETS))
+    e = sub.add_parser("eq", help="EQ preset (Nothing and CMF models have different sets)")
+    e.add_argument("preset", choices=sorted(set(EQ_PRESETS) | set(CMF_EQ_PRESETS)))
     e.set_defaults(func=cmd_eq)
 
     ce = sub.add_parser("custom-eq")

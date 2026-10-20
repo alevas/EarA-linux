@@ -15,6 +15,8 @@ from eara import __version__, bluez
 from eara import SUPPORT_URL
 from eara.i18n import load_lang, power_off_on_exit, set_lang, set_power_off_on_exit, t
 from eara.protocol import (
+    CMF_EQ_PRESETS,
+    EQ_PRESETS,
     GESTURE_ACTIONS,
     GESTURE_TYPES,
     GRAPHIC_HZ,
@@ -22,6 +24,10 @@ from eara.protocol import (
     format_ear_tip,
     merge_gestures,
 )
+
+# One button per named preset of either family; _apply_capabilities shows the model's set.
+# "custom" has no button: Apply EQ bands selects it.
+_EQ_BUTTON_KEYS = tuple(k for k in dict.fromkeys([*EQ_PRESETS, *CMF_EQ_PRESETS]) if k != "custom")
 from eara.session import Device
 
 _FONT_DOT_FALLBACK = "DotGothic16, VT323, monospace"
@@ -1142,7 +1148,7 @@ class EarAWindow(Adw.ApplicationWindow):
         eq = Gtk.FlowBox(max_children_per_line=2, selection_mode=Gtk.SelectionMode.NONE)
         self.eq_flow = eq
         self.eq_buttons: dict[str, Gtk.Button] = {}
-        for key in ("balanced", "more_bass", "more_treble", "voice"):
+        for key in _EQ_BUTTON_KEYS:
             b = Gtk.Button()
             b.add_css_class("eara-chip")
             b.connect("clicked", lambda *_, k=key: self._run(lambda: self._require().set_eq(k)))
@@ -1748,6 +1754,9 @@ class EarAWindow(Adw.ApplicationWindow):
         self.anc_flow.set_visible(bool(caps.get("anc")))
         self.lbl_eq.set_visible(bool(caps.get("eq_presets", True)))
         self.eq_flow.set_visible(bool(caps.get("eq_presets", True)))
+        presets = CMF_EQ_PRESETS if caps.get("cmf_eq") else EQ_PRESETS
+        for key, btn in self.eq_buttons.items():
+            btn.set_visible(key in presets)
         self.graphic_box.set_visible(bool(caps.get("custom_eq", True)))
         self.btn_apply_eq.set_visible(bool(caps.get("custom_eq", True)))
         self.lbl_custom.set_visible(bool(caps.get("custom_eq", True)))
@@ -1818,7 +1827,7 @@ class EarAWindow(Adw.ApplicationWindow):
         else:
             self.chip_anc.set_visible(False)
         if isinstance(eq_name, str) and eq_name:
-            eq_label = t(eq_name) if eq_name in ("balanced", "more_bass", "more_treble", "voice") else eq_name
+            eq_label = t(eq_name) if eq_name in self.eq_buttons else eq_name
             self.chip_eq.set_text(f"EQ · {eq_label}")
             self.chip_eq.set_visible(True)
         else:

@@ -11,6 +11,7 @@ from eara import audio, bluez
 from eara.models import MODELS_BY_BASE, Model, model_from_name, model_from_serial
 from eara.protocol import (
     ANC_MODES,
+    CMF_EQ_PRESETS,
     CMD_ADVANCED_EQ_GET,
     CMD_ADVANCED_EQ_SET,
     CMD_ANC_GET,
@@ -59,6 +60,7 @@ from eara.protocol import (
     parse_anc,
     parse_bass,
     parse_battery,
+    parse_cmf_eq,
     parse_custom_eq,
     parse_device_codec,
     parse_ear_tip,
@@ -385,7 +387,11 @@ class Device:
                 anc = self._request(CMD_ANC_GET)
                 if anc is not None:
                     result["anc"] = parse_anc(anc)
-            if self.model.eq_presets:
+            if self.model.cmf_eq:
+                preset = self._request(CMD_LISTENING_GET)
+                if preset is not None:
+                    result["eq"] = parse_cmf_eq(preset)
+            elif self.model.eq_presets:
                 eq = self._request(CMD_EQ_GET)
                 if eq is not None:
                     result["eq"] = parse_eq(eq)
@@ -444,11 +450,16 @@ class Device:
             self._request(CMD_ANC_SET, DIR_SET, payload, require=True)
             time.sleep(0.2)
 
+    def eq_preset_codes(self) -> dict[str, int]:
+        return CMF_EQ_PRESETS if self.model.cmf_eq else EQ_PRESETS
+
     def set_eq(self, preset: str) -> None:
-        if preset not in EQ_PRESETS:
-            raise ValueError(f"Unknown EQ preset: {preset}")
+        presets = self.eq_preset_codes()
+        if preset not in presets:
+            raise ValueError(f"Unknown EQ preset for {self.model.name}: {preset}")
+        command = CMD_LISTENING_SET if self.model.cmf_eq else CMD_EQ_SET
         with self._session():
-            self._request(CMD_EQ_SET, DIR_SET, bytes([EQ_PRESETS[preset], 0]), require=True)
+            self._request(command, DIR_SET, bytes([presets[preset], 0]), require=True)
             time.sleep(0.2)
 
     def set_custom_eq(self, bass: float, mid: float, treble: float) -> None:
@@ -464,7 +475,11 @@ class Device:
         clamped = [clamp_eq_gain(g) for g in gains]
         bass, mid, treble = graphic_to_three(clamped)
         with self._session():
-            self._request(CMD_ADVANCED_EQ_SET, DIR_SET, bytes([1, 0]), require=True)
+            if self.model.cmf_eq:
+                custom = bytes([CMF_EQ_PRESETS["custom"], 0])
+                self._request(CMD_LISTENING_SET, DIR_SET, custom, require=True)
+            else:
+                self._request(CMD_ADVANCED_EQ_SET, DIR_SET, bytes([1, 0]), require=True)
             self._request(
                 CMD_CUSTOM_EQ_SET,
                 DIR_SET,

@@ -29,6 +29,7 @@ class Model:
     find_my: bool = True
     personalized_anc: bool = False
     listening_mode: bool = False  # CMF Buds / Buds Pro 2 style
+    cmf_eq: bool = False  # EQ presets via the 0x1D / 0x50 pair (verified on CMF Buds 2)
 
     def as_dict(self) -> dict:
         return {
@@ -49,6 +50,7 @@ class Model:
                 "find_my": self.find_my,
                 "personalized_anc": self.personalized_anc,
                 "listening_mode": self.listening_mode,
+                "cmf_eq": self.cmf_eq,
             },
         }
 
@@ -110,6 +112,14 @@ MODELS_BY_BASE: dict[str, Model] = {
         base="B168",
         family="cmf-buds",
         listening_mode=True,
+        bass_enhance=True,
+    ),
+    "B179": Model(
+        name="CMF Buds 2",
+        base="B179",
+        family="cmf-buds2",
+        cmf_eq=True,
+        advanced_eq=False,
         bass_enhance=True,
     ),
     "B172": Model(
@@ -191,6 +201,7 @@ def model_from_name(name: str) -> Model:
         ("ear (2)", "B155"),
         ("buds pro 2", "B172"),
         ("buds pro", "B163"),
+        ("cmf buds 2", "B179"),
         ("cmf buds", "B168"),
         ("neckband", "B164"),
         ("nothing ear", "B171"),

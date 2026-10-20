@@ -75,6 +75,21 @@ EQ_PRESETS = {
 
 EQ_FROM_WIRE = {v: k for k, v in EQ_PRESETS.items()}
 
+# CMF Buds 2 select EQ presets with the 0x1D / 0x50 pair (CMD_LISTENING_SET /
+# CMD_LISTENING_GET); they ack CMD_EQ_SET but ignore it. Numbering as in ear-web,
+# which uses the same pair for CMF Buds and Buds Pro 2 (not verified here).
+CMF_EQ_PRESETS = {
+    "balanced": 0,
+    "rock": 1,
+    "electronic": 2,
+    "pop": 3,
+    "enhance_vocals": 4,
+    "classical": 5,
+    "custom": 6,
+}
+
+CMF_EQ_FROM_WIRE = {v: k for k, v in CMF_EQ_PRESETS.items()}
+
 # Gesture action bytes (same encoding as Nothing X / ear-web).
 GESTURE_ACTIONS = {
     "no-action": 0x01,
@@ -290,6 +305,12 @@ def parse_eq(payload: bytes) -> Optional[str]:
     if not payload:
         return None
     return EQ_FROM_WIRE.get(payload[0], f"unknown-{payload[0]}")
+
+
+def parse_cmf_eq(payload: bytes) -> Optional[str]:
+    if not payload:
+        return None
+    return CMF_EQ_FROM_WIRE.get(payload[0], f"unknown-{payload[0]}")
 
 
 def parse_in_ear(payload: bytes) -> Optional[bool]:
