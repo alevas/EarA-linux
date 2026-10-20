@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import os
 import socket
+import struct
 import subprocess
 import time
 from typing import Optional
 
-from eara.protocol import RFCOMM_CHANNEL
+from eara.protocol import NT_LINK_UUID, RFCOMM_CHANNEL
 
 ADDRESS_RE = __import__("re").compile(r"^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$")
+
+SDP_PSM = 1
+_RFCOMM_UUID16 = 0x0003
+_channel_cache: dict[tuple[str, str], int] = {}
 
 
 def _ctl(*args: str, timeout: float = 8) -> str:
@@ -299,13 +304,99 @@ def disconnect(address: str) -> None:
     dbus_disconnect(address)
 
 
+def _sdp_request(uuid: str, transaction: int, continuation: bytes = b"") -> bytes:
+    """SDP ServiceSearchAttributeRequest for one 128-bit service UUID, asking only for
+    its ProtocolDescriptorList (attribute 0x0004)."""
+    pattern = b"\x35\x11\x1c" + bytes.fromhex(uuid.replace("-", ""))
+    attributes = b"\x35\x05\x0a" + struct.pack(">HH", 0x0004, 0x0004)
+    params = pattern + struct.pack(">H", 0xFFFF) + attributes + bytes([len(continuation)]) + continuation
+    return struct.pack(">BHH", 0x06, transaction, len(params)) + params
+
+
+def _sdp_response(pdu: bytes) -> tuple[bytes, bytes]:
+    """Split a ServiceSearchAttributeResponse into (attribute lists, continuation state)."""
+    if len(pdu) < 8 or pdu[0] != 0x07:
+        raise ValueError("unexpected SDP response")
+    count = struct.unpack_from(">H", pdu, 5)[0]
+    cont_len = pdu[7 + count]
+    return pdu[7 : 7 + count], pdu[8 + count : 8 + count + cont_len]
+
+
+def _sdp_element(data: bytes, pos: int = 0) -> tuple[object, int]:
+    """Decode one SDP data element: sequences become lists, integers and UUIDs ints."""
+    header = data[pos]
+    kind, size_index = header >> 3, header & 0x07
+    pos += 1
+    if kind == 0:  # nil
+        return None, pos
+    if size_index < 5:
+        size = 1 << size_index
+    else:
+        width = 1 << (size_index - 5)
+        size = int.from_bytes(data[pos : pos + width], "big")
+        pos += width
+    body, end = data[pos : pos + size], pos + size
+    if len(body) != size:
+        raise ValueError("truncated SDP element")
+    if kind in (6, 7):  # sequence / alternative
+        items, inner = [], 0
+        while inner < len(body):
+            item, inner = _sdp_element(body, inner)
+            items.append(item)
+        return items, end
+    if kind in (1, 2, 3):  # unsigned, signed, UUID
+        return int.from_bytes(body, "big", signed=kind == 2), end
+    return body, end
+
+
+def _rfcomm_channel_in(value: object) -> Optional[int]:
+    """Find the [RFCOMM, channel] pair inside a decoded ProtocolDescriptorList."""
+    if not isinstance(value, list):
+        return None
+    if len(value) >= 2 and value[0] == _RFCOMM_UUID16 and isinstance(value[1], int):
+        return value[1]
+    for item in value:
+        found = _rfcomm_channel_in(item)
+        if found is not None:
+            return found
+    return None
+
+
+def rfcomm_channel(address: str, uuid: str = NT_LINK_UUID, timeout: float = 5) -> Optional[int]:
+    """RFCOMM channel the device publishes for `uuid` (SDP lookup), or None if unknown.
+
+    Models differ: Ear (a) serves the Nothing control link on channel 15, CMF Buds 2 on 16.
+    """
+    key = (address.upper(), uuid)
+    if key in _channel_cache:
+        return _channel_cache[key]
+    try:
+        with socket.socket(socket.AF_BLUETOOTH, socket.SOCK_SEQPACKET, socket.BTPROTO_L2CAP) as sock:
+            sock.settimeout(timeout)
+            sock.connect((address, SDP_PSM))
+            lists, continuation = b"", b""
+            for transaction in range(1, 17):
+                sock.send(_sdp_request(uuid, transaction, continuation))
+                part, continuation = _sdp_response(sock.recv(4096))
+                lists += part
+                if not continuation:
+                    break
+        channel = _rfcomm_channel_in(_sdp_element(lists)[0])
+    except (OSError, ValueError, IndexError):
+        return None
+    if channel is not None:
+        _channel_cache[key] = channel
+    return channel
+
+
 def open_rfcomm(address: str, timeout: float = 8) -> socket.socket:
+    channel = rfcomm_channel(address) or RFCOMM_CHANNEL
     last: Optional[OSError] = None
     for attempt in range(8):
         sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         sock.settimeout(timeout)
         try:
-            sock.connect((address, RFCOMM_CHANNEL))
+            sock.connect((address, channel))
             return sock
         except OSError as exc:
             last = exc
