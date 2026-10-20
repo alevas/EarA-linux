@@ -1530,7 +1530,6 @@ class EarAWindow(Adw.ApplicationWindow):
             self.lat_switch,
             self.adv_switch,
             self.panc_switch,
-            self.power_off_switch,
         ):
             widgets.append(switch)
         return widgets
@@ -1624,9 +1623,14 @@ class EarAWindow(Adw.ApplicationWindow):
             return
         self._shutting_down = True
         power_off = power_off_on_exit()
+        if not power_off:
+            # Leave Bluetooth and the earbuds as they are; only release the control channel.
+            if self.device:
+                self.device.close_control()
+            return
         if self.device:
-            self.device.shutdown(power_off=power_off)
-        elif power_off:
+            self.device.shutdown(power_off=True)
+        else:
             try:
                 bluez.power_off()
             except Exception:

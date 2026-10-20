@@ -250,7 +250,8 @@ def _write_config(data: dict) -> None:
 
 
 def power_off_on_exit() -> bool:
-    return bool(_read_config().get("power_off_on_exit", True))
+    # Opt-in: powering off the adapter also drops every other Bluetooth device (mouse, keyboard).
+    return bool(_read_config().get("power_off_on_exit", False))
 
 
 def set_power_off_on_exit(enabled: bool) -> None:
